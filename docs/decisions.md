@@ -146,4 +146,11 @@ Worst-case lag from approval reply to send: 15 minutes. Chosen over 30 so
 that edit-request round-trips ("approve but warmer" → revision → fresh
 approval) feel conversational during the trial.
 
-## 8. Pause conditions beyond the checkbox — pending
+## 8. Pause conditions beyond the checkbox — DECIDED 25 Aug 2026
+
+None. No cohort-wide break dates, no snooze field in v1 (a "skip" reply on
+the draft covers known individual situations; `Placement Paused?` covers
+longer ones). First-form lateness gets the standard week-1 gentle nudge —
+no special first-month grace beyond what the month-anniversary maths already
+provides. `Placement Paused?` and completed placements remain unconditional
+and are the only automatic silencers.
