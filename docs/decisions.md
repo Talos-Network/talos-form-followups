@@ -121,7 +121,17 @@ send fails after approval, the row stays Pending and the bot reports the
 failure in the Slack thread. A row with no reply stays Pending forever —
 silence is never consent.
 
-## 4. Run cadence and summary destination — pending
+## 4. Run cadence and destination — DECIDED 25 Aug 2026
+
+**Draft job: daily at 08:00 Berlin time** (Actions cron 06:00 UTC; drifts to
+07:00 local in winter — acceptable for a daily job, noted in runbook).
+Daily means every rung fires exactly on its 7/14/21-day mark; most days
+produce no drafts and no messages.
+
+**Destination for the trial: DM to Steve** rather than the #form-nudges
+channel. The destination is a single config value (a Slack conversation ID);
+the documented handover path is switching it to a private channel so a
+successor inherits the flow — no code change involved.
 
 ## 6. Slack reply allowlist — pending (start: Steve only)
 
