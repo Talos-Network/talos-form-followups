@@ -133,8 +133,17 @@ channel. The destination is a single config value (a Slack conversation ID);
 the documented handover path is switching it to a private channel so a
 successor inherits the flow — no code change involved.
 
-## 6. Slack reply allowlist — pending (start: Steve only)
+## 6. Slack reply allowlist — DECIDED 25 Aug 2026
 
-## 7. Poller cadence and Slack channel — pending
+Steve only (user ID captured during Slack app setup). The poller verifies the
+sender's user ID against the allowlist even in the trial DM — it never trusts
+the conversation itself — so moving to a channel later adds no new risk.
+
+## 7. Poller cadence — DECIDED 25 Aug 2026
+
+**Every 15 minutes** (Actions cron), plus workflow_dispatch for "act now".
+Worst-case lag from approval reply to send: 15 minutes. Chosen over 30 so
+that edit-request round-trips ("approve but warmer" → revision → fresh
+approval) feel conversational during the trial.
 
 ## 8. Pause conditions beyond the checkbox — pending
