@@ -250,5 +250,19 @@ class TestConsolidation(unittest.TestCase):
         self.assertEqual(batches2, [])
 
 
+class TestPermalinkParsing(unittest.TestCase):
+    def test_parse_permalink(self):
+        from slack_client import parse_permalink
+        channel, ts = parse_permalink(
+            "https://talos.slack.com/archives/D0B37DNFKKP/p1724580000123456")
+        self.assertEqual(channel, "D0B37DNFKKP")
+        self.assertEqual(ts, "1724580000.123456")
+
+    def test_parse_permalink_rejects_garbage(self):
+        from slack_client import parse_permalink
+        with self.assertRaises(ValueError):
+            parse_permalink("https://example.com/not-slack")
+
+
 if __name__ == "__main__":
     unittest.main()

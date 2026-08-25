@@ -26,8 +26,8 @@ from drafting import draft_fellow_nudge, draft_supervisor_batch
 from rules import consolidate_supervisor_nudges, who_needs_nudging
 from slack_client import open_dm, permalink, post_message
 
-REPLY_HINT = ("_Reply in this thread: *approve* to send it, describe any "
-              "changes you'd like, or *skip* to drop it._")
+REPLY_HINT = ("_React ✅ to approve. Anything else — changes, questions, "
+              "*skip* — reply in this thread._")
 
 
 def main() -> None:

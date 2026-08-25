@@ -172,6 +172,16 @@ Steve only (user ID captured during Slack app setup). The poller verifies the
 sender's user ID against the allowlist even in the trial DM — it never trusts
 the conversation itself — so moving to a channel later adds no new risk.
 
+## 6b. Approval channels — DECIDED 25 Aug 2026
+
+A ✅ (white_check_mark) reaction on the draft message, from the allowlisted
+approver, counts as approval. Everything else — edits, skips, questions —
+happens in thread replies. Precedence rules (conservative in collisions):
+- Thread replies OUTRANK the reaction: a written "skip" beats a stray ✅.
+- Once any conversation has started in a thread, the ✅ on the original
+  message stops counting — a revision always needs its own fresh approval.
+- Reactions and replies from anyone off the allowlist are ignored.
+
 ## 7. Poller cadence — DECIDED 25 Aug 2026
 
 **Every 15 minutes** (Actions cron), plus workflow_dispatch for "act now".

@@ -57,3 +57,31 @@ def post_message(channel: str, text: str, thread_ts: str | None = None) -> str:
 
 def permalink(channel: str, ts: str) -> str:
     return _get("chat.getPermalink", {"channel": channel, "message_ts": ts})["permalink"]
+
+
+def parse_permalink(url: str) -> tuple[str, str]:
+    """(channel, ts) from a message permalink like
+    https://xyz.slack.com/archives/D0ABC123/p1724580000123456 —
+    the p-number is the ts with its dot removed (last 6 digits are decimals)."""
+    import re
+    m = re.search(r"/archives/([A-Z0-9]+)/p(\d+)", url)
+    if not m:
+        raise ValueError(f"Not a Slack message permalink: {url}")
+    channel, raw = m.group(1), m.group(2)
+    return channel, f"{raw[:-6]}.{raw[-6:]}"
+
+
+def thread_replies(channel: str, ts: str) -> list[dict]:
+    """All messages in a thread, oldest first (parent included)."""
+    return _get("conversations.replies",
+                {"channel": channel, "ts": ts, "limit": "100"})["messages"]
+
+
+def reaction_users(channel: str, ts: str, emoji: str) -> list[str]:
+    """User IDs who reacted to a message with the given emoji name."""
+    msg = _get("reactions.get",
+               {"channel": channel, "timestamp": ts, "full": "true"}).get("message", {})
+    for r in msg.get("reactions", []):
+        if r.get("name") == emoji:
+            return r.get("users", [])
+    return []
