@@ -76,6 +76,11 @@ class RulesResult:
     silenced: list[str] = field(default_factory=list)       # paused/completed
     unprocessable: list[str] = field(default_factory=list)  # "name: why" — show a human
     quiet: list[str] = field(default_factory=list)          # checked, nothing due
+    # Supervisor forms outstanding but not yet at rung 1 (requested < 7 days
+    # ago, no history this month). Never trigger an email on their own, but a
+    # supervisor batch that fires for another fellow mentions them, so each
+    # supervisor email is complete and later emails often become unnecessary.
+    supervisor_context: list[DueNudge] = field(default_factory=list)
 
 
 def add_months(d: date, n: int) -> date:
@@ -143,6 +148,47 @@ def _first(value) -> str:
     return value or ""
 
 
+@dataclass
+class SupervisorBatch:
+    """All of one supervisor's own-form chases for today, folded into ONE
+    email. The ledger still gets one row per placement (sharing the same
+    draft and Slack thread), so rungs and restraint stay per-placement."""
+    email: str
+    first_name: str
+    items: list[DueNudge]
+    also_outstanding: list[DueNudge] = field(default_factory=list)
+
+    @property
+    def rung(self) -> int:
+        return max(n.rung for n in self.items)
+
+    @property
+    def depth(self) -> int:
+        return max(n.depth for n in self.items)
+
+
+def consolidate_supervisor_nudges(
+        due: list[DueNudge], supervisor_context: list[DueNudge] = (),
+) -> tuple[list[DueNudge], list[SupervisorBatch]]:
+    """Split today's due list into fellow nudges (one email each) and
+    supervisor batches (one email per supervisor, however many fellows).
+
+    Context items (outstanding but not yet due) attach to an existing batch
+    for the same supervisor — mentioned in the email, no ledger row, no
+    ladder movement. They never create a batch on their own."""
+    fellows = [n for n in due if n.recipient == FELLOW]
+    batches: dict[str, SupervisorBatch] = {}
+    for n in due:
+        if n.recipient == SUPERVISOR:
+            batch = batches.setdefault(
+                n.email, SupervisorBatch(email=n.email, first_name=n.first_name, items=[]))
+            batch.items.append(n)
+    for c in supervisor_context:
+        if c.email in batches:
+            batches[c.email].also_outstanding.append(c)
+    return fellows, list(batches.values())
+
+
 def who_needs_nudging(placements: list[dict], history: list[PriorNudge],
                       today: date) -> RulesResult:
     """placements: fixture-shaped records — Airtable `fields` dict plus
@@ -187,8 +233,25 @@ def who_needs_nudging(placements: list[dict], history: list[PriorNudge],
             if current_form_done(dates, request):
                 result.quiet.append(f"{name} ({recipient}): current month submitted")
                 continue
-            rung = _next_rung(by_key.get((rec["id"], recipient), []), request, today)
+            person_history = by_key.get((rec["id"], recipient), [])
+            rung = _next_rung(person_history, request, today)
             if rung is None:
+                # A supervisor form that is outstanding but simply hasn't hit
+                # day 7 yet (and has no history this month) becomes context
+                # for any batch email that fires for this supervisor today.
+                if (recipient == SUPERVISOR and supervisor_email
+                        and days < NUDGE_DAY_THRESHOLDS[0]
+                        and not any(h.on >= request for h in person_history)):
+                    result.supervisor_context.append(DueNudge(
+                        placement_id=rec["id"], recipient=SUPERVISOR,
+                        person_name=name, first_name=f.get("First Name", ""),
+                        email=supervisor_email, org=f.get("Placement Org", ""),
+                        rung=0, depth=depth, request_date=request,
+                        days_since_request=days,
+                        form_link=f.get("Supervisor Form Link", ""),
+                        supervisor_email=supervisor_email,
+                        supervisor_first_name=supervisor_first,
+                        reason="outstanding, not yet at rung 1 — context only"))
                 result.quiet.append(f"{name} ({recipient}): no rung due")
                 continue
 
@@ -204,7 +267,7 @@ def who_needs_nudging(placements: list[dict], history: list[PriorNudge],
                   and bool(supervisor_email))
             result.due.append(DueNudge(
                 placement_id=rec["id"], recipient=recipient,
-                person_name=name if recipient == FELLOW else _first(f.get("Supervisor First Name")) or "supervisor",
+                person_name=name,  # always the fellow/placement name — identifies the row
                 first_name=first, email=email, org=f.get("Placement Org", ""),
                 rung=rung, depth=depth, request_date=request,
                 days_since_request=days, form_link=link,

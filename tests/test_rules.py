@@ -191,5 +191,38 @@ class TestSupervisors(unittest.TestCase):
         self.assertTrue(any("no supervisor email" in u for u in r.unprocessable))
 
 
+class TestConsolidation(unittest.TestCase):
+    def test_one_email_per_supervisor(self):
+        from rules import consolidate_supervisor_nudges
+        p1 = placement(pid="rec1", name="Fellow One", expected=2, actual_s=0)
+        p2 = placement(pid="rec2", name="Fellow Two", expected=2, actual_s=0)
+        p3 = placement(pid="rec3", name="Fellow Three", expected=2, actual_s=0,
+                       supervisor_email="other@example.org")
+        r = who_needs_nudging([p1, p2, p3], [], TODAY)
+        fellows, batches = consolidate_supervisor_nudges(r.due, r.supervisor_context)
+        self.assertEqual(len(batches), 2)  # sup@ (two fellows) and other@
+        big = next(b for b in batches if b.email == "sup@example.org")
+        self.assertEqual({n.person_name for n in big.items}, {"Fellow One", "Fellow Two"})
+        self.assertEqual(big.rung, 1)
+
+    def test_context_attaches_but_never_creates_a_batch(self):
+        from rules import consolidate_supervisor_nudges
+        # Same supervisor: one placement 24 days late (due), one requested
+        # 5 days ago (outstanding, below rung 1) -> one email, both mentioned.
+        p_due = placement(pid="rec1", name="Fellow One", expected=2, actual_s=0)
+        p_ctx = placement(pid="rec2", name="Fellow Two", start="2026-04-20",
+                          expected=3, actual_s=2,
+                          supervisor_dates=["2026-06-02", "2026-06-30"])
+        r = who_needs_nudging([p_due, p_ctx], [], TODAY)
+        fellows, batches = consolidate_supervisor_nudges(r.due, r.supervisor_context)
+        self.assertEqual(len(batches), 1)
+        self.assertEqual(len(batches[0].items), 1)
+        self.assertEqual(batches[0].also_outstanding[0].person_name, "Fellow Two")
+        # Alone (without the due placement), context creates no email at all.
+        r2 = who_needs_nudging([p_ctx], [], TODAY)
+        fellows2, batches2 = consolidate_supervisor_nudges(r2.due, r2.supervisor_context)
+        self.assertEqual(batches2, [])
+
+
 if __name__ == "__main__":
     unittest.main()
