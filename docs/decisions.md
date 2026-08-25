@@ -88,11 +88,40 @@ placement, and to respond to any feedback you might share."
 Supervisor own-form chases mirror the same registers, professional tone,
 anchored on MOU §B.3 at the firm end.
 
-## 3. Nudges table shape — pending
+## 3 + 5. Nudge memory: a Nudges table in the Placements-MEL base — DECIDED 25 Aug 2026
+
+One table serves as both nudge memory and approval ledger. Alternatives
+(state file in the repo, separate base) were considered and rejected — the
+state file above all because it would commit fellows' personal data into git
+history permanently, hand-roll a race condition between the two workflows
+(risking the double-send hard rule), and hide the audit trail from the team.
+
+The Airtable token gains write access to THIS TABLE ONLY; read-only on
+everything else in the base.
+
+Fields:
+
+| Field           | Type                                   | Purpose |
+|-----------------|----------------------------------------|---------|
+| Placement       | Link to Placements                     | Whose chase this is |
+| Recipient       | Single select: Fellow / Supervisor     | Who was contacted |
+| Rung            | Number (1-3)                           | Week rung when drafted |
+| Depth           | Number                                 | Forms behind at drafting time |
+| Supervisor CC'd | Checkbox                               | Whether the 3+-depth CC applied |
+| Status          | Single select: Pending / Sent / Rejected | The state machine |
+| Draft           | Long text                              | Draft as approved; revisions appended above the original |
+| Slack thread    | URL/text                               | Permalink to the approval thread |
+| Approved by     | Text                                   | Slack user who approved |
+| Created at      | Date                                   | When drafted |
+| Sent at         | Date                                   | When actually sent |
+
+Status is deliberately three-state: an approved draft is sent seconds later
+by the poller, so a separate "Approved" state would never be observed. If a
+send fails after approval, the row stays Pending and the bot reports the
+failure in the Slack thread. A row with no reply stays Pending forever —
+silence is never consent.
 
 ## 4. Run cadence and summary destination — pending
-
-## 5. Nudges table ledger fields — pending
 
 ## 6. Slack reply allowlist — pending (start: Steve only)
 
