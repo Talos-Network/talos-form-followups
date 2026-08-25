@@ -26,7 +26,8 @@ from drafting import draft_fellow_nudge, draft_supervisor_batch
 from rules import consolidate_supervisor_nudges, who_needs_nudging
 from slack_client import open_dm, permalink, post_message
 
-REPLY_HINT = "_Reply in this thread: approve / describe an edit / skip._"
+REPLY_HINT = ("_Reply in this thread: *approve* to send it, describe any "
+              "changes you'd like, or *skip* to drop it._")
 
 
 def main() -> None:
@@ -47,11 +48,11 @@ def main() -> None:
             failures.append(f"fellow {n.first_name}: {e}")
             continue
         record_id = create_pending_nudge(n, f"Subject: {subject}\n\n{body}", today)
-        header = f"*Fellow nudge — {n.first_name} ({n.org})* · rung {n.rung} · depth {n.depth}"
+        intro = f"Hey — I've drafted a follow-up to {n.first_name} about their progress report."
         if n.cc_supervisor:
-            header += f" · CC {n.supervisor_email}"
+            intro += f" Their supervisor {n.supervisor_first_name} ({n.supervisor_email}) will be CC'd."
         ts = post_message(channel, (
-            f"{header}\n*To:* {n.email}\n*Subject:* {subject}\n\n{body}\n\n{REPLY_HINT}"))
+            f"{intro}\n\n*Subject:* {subject}\n\n{body}\n\n{REPLY_HINT}"))
         set_slack_thread(record_id, permalink(channel, ts))
         posted += 1
 
@@ -63,11 +64,13 @@ def main() -> None:
             continue
         draft_text = f"Subject: {subject}\n\n{body}"
         record_ids = [create_pending_nudge(item, draft_text, today) for item in b.items]
-        re_fellows = ", ".join(i.person_name for i in b.items)
-        header = (f"*Supervisor nudge — {b.first_name}* · rung {b.rung} · "
-                  f"re {re_fellows}")
+        firsts = [i.person_name.split()[0] for i in b.items]
+        listed = " and ".join(", ".join(firsts).rsplit(", ", 1)) if len(firsts) > 1 else firsts[0]
+        intro = (f"Hey — I've drafted a follow-up to {b.first_name} about their "
+                 f"progress report{'s' if len(firsts) > 1 else ''} on "
+                 f"{listed}'s placement{'s' if len(firsts) > 1 else ''}.")
         ts = post_message(channel, (
-            f"{header}\n*To:* {b.email}\n*Subject:* {subject}\n\n{body}\n\n{REPLY_HINT}"))
+            f"{intro}\n\n*Subject:* {subject}\n\n{body}\n\n{REPLY_HINT}"))
         link = permalink(channel, ts)
         for record_id in record_ids:
             set_slack_thread(record_id, link)
