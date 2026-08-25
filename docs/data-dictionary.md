@@ -32,9 +32,9 @@ the grace window — acceptable.
 | `Actual Reports (Fellows)` | Count of linked `Fellow Reports` (Fellows Forms rows). |
 | `Actual Reports (Supervisors)` | Count of linked `Supervisor Reports` (Supervisors Forms rows). |
 | `Status (Fellows)` / `(Supervisors)` | actual/expected × 100. **BLANK when Expected = 0.** |
-| `Updates? (Fellows)` / `(Supervisors)` | "Up-to-date" if Status ≥ 100, else "Not up-to-date". **TRAP: shows "Not up-to-date" for brand-new placements (Expected = 0, Status blank) even though nothing is due. Never use this as the behind-flag — compute from Expected/Actual and dates.** |
-| `Last Form Completed` | **TRAP: despite the generic name, this rolls up the SUPERVISORS Forms `Date`.** |
-| `Last Form Completed (Fellows)` | The fellows one — rolls up Fellows Forms `Date Form Completed`. VERIFY the rollup aggregation is MAX (latest) against real records. |
+| `Updates? (Fellows)` / `(Supervisors)` | "Not yet due" if Expected = 0 (or blank), "Up-to-date" if Status ≥ 100, else "Not up-to-date". Formula fixed 25 Aug 2026 — previously showed "Not up-to-date" for brand-new placements. Display-only: the tool still computes its behind-flag from Expected/Actual and dates, never from this field. |
+| `Last Form Completed (Supervisors)` | Rolls up Supervisors Forms `Date` (MAX). Renamed 25 Aug 2026 from the ambiguous bare name `Last Form Completed`. |
+| `Last Form Completed (Fellows)` | The fellows one — rolls up Fellows Forms `Date Form Completed`. VERIFIED 25 Aug 2026 against fixture: aggregation is MAX (latest). |
 | `Placement Paused?` | Checkbox. Unconditional silencer. |
 | `Placement Completed` | `IS_BEFORE(End Date, TODAY())`. Unconditional silencer. |
 | `Fellow Email`, `First Name`, `Fellow Form Link`, `Supervisor Form Link`, `Cohort` | Contact/context for drafts. |
@@ -64,3 +64,25 @@ placements and current on others. VERIFY semantics in fixture session.
 - Edge cases answered: before the first report is due, Expected = 0 and
   Status is BLANK → tool does nothing (nothing is due). Expected can never go
   negative (floored at 0) and stops accruing at End Date.
+
+## Fixture findings (verified by hand against 4 real records, 25 Aug 2026)
+
+- **Records may lack Start Date entirely**, with free-text notes stuffed into
+  `Placement Org` (real example: "Ended her placement at Omidyar early").
+  Expected Reports is then BLANK and `Placement Completed` cannot evaluate,
+  so the paused/completed silencers do NOT catch these records. HARD GUARD:
+  no Start Date → never chase; list the record in the daily summary as
+  unprocessable so a human sees the data-hygiene problem.
+- **Double-submission months happen** (two fellow forms in one calendar
+  month) and Actual can exceed Expected (Status > 100%). Never assume
+  one-form-per-month; "current month done" = any submission on/after the
+  current request date.
+- **Naming trap confirmed with real data**: a fellow with zero submissions
+  showed `Last Form Completed` = their supervisor's latest date.
+- **The catching-up case exists in the wild**: behind on a past month but
+  current month submitted → no nudge (per spec); depth shades the tone of
+  the next month's nudge if that one is late. Past months are never chased
+  individually.
+- Supervisors may keep submitting while a placement is paused. Pause is
+  placement-level and unconditional: it silences BOTH the fellow chase and
+  the supervisor's own-form chase for that placement.

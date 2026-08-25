@@ -29,7 +29,7 @@ PLACEMENT_FIELDS = [
     "Actual Reports (Fellows)", "Actual Reports (Supervisors)",
     "Status (Fellows)", "Status (Supervisors)",
     "Updates? (Fellows)", "Updates? (Supervisors)",
-    "Last Form Completed", "Last Form Completed (Fellows)",
+    "Last Form Completed (Supervisors)", "Last Form Completed (Fellows)",
     "Fellow Form Link", "Supervisor Form Link",
     "Supervisor", "Email (from Supervisor)", "Supervisor First Name",
 ]
