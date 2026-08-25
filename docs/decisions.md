@@ -59,7 +59,34 @@ Two routes, used together:
 Verify both against real records in the fixture session before coding
 (including a catching-up case if one exists). Becomes a unit-tested function.
 
-## 2. Tone per rung and sign-off identity — pending
+## 2. Tone per rung and sign-off identity — DECIDED 25 Aug 2026
+
+**Sign-off: "Talos Ops"** (from ops@talosnetwork.org). Team identity, never a
+personal voice (hard rule 7).
+
+**Vocabulary:** the programme's own term is **"monthly reflection report"**
+(MOU §C.3 fellows / §B.3 host organisations) — use it, not "progress form".
+
+**The purpose framing** (from the original form request, reusable in gentle
+rungs): "This helps us better understand how you are experiencing your
+placement, and to respond to any feedback you might share."
+
+**Register anchors** (Steve's own words; middle rungs interpolate):
+
+- Gentlest (week 1 x 1 behind): "Just a quick reminder to complete your
+  latest progress report..." — light, assumes good faith, includes the
+  purpose framing and the form link.
+- Firmest (week 3 x 3+ behind): names the signed obligation. MOU-accurate
+  default: "Completing the monthly reflection report is a requirement of your
+  Fellowship agreement." Steve's original phrasing was "a condition of your
+  funding" — the stipend sits in the separate Scholarship Agreement, so use
+  the funding phrasing only if that agreement ties the stipend to programme
+  obligations. **TODO: Steve to check the Scholarship Agreement wording.**
+  At 3+ depth the supervisor CC is already happening (decision 1), so the
+  email is transparent about it ("we've copied in <supervisor>").
+
+Supervisor own-form chases mirror the same registers, professional tone,
+anchored on MOU §B.3 at the firm end.
 
 ## 3. Nudges table shape — pending
 
