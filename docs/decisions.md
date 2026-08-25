@@ -71,8 +71,11 @@ Verify both against real records in the fixture session before coding
 **Sign-off: "Talos Ops"** (from ops@talosnetwork.org). Team identity, never a
 personal voice (hard rule 7).
 
-**Vocabulary:** the programme's own term is **"monthly reflection report"**
-(MOU §C.3 fellows / §B.3 host organisations) — use it, not "progress form".
+**Vocabulary:** REVISED 25 Aug 2026 — **"progress report"**, per Steve. The
+MOU (§C.3/§B.3) says "monthly reflection report"; Steve consciously waived
+matching the contract wording ("progress report" is fine legally). The rung-3
+obligation sentence still points at the signed agreement, just using the
+programme's everyday term.
 
 **The purpose framing** (from the original form request, reusable in gentle
 rungs): "This helps us better understand how you are experiencing your
@@ -102,6 +105,21 @@ anchored on MOU §B.3 at the firm end.
   `covers_period_since` for this.
 - **Every supervisor email offers an out**: if they're not the right person
   to complete these reports, reply and we'll update our records.
+
+**Round 2 (25 Aug 2026):**
+- Depth 1 emails keep it simple ("your most recent progress report") — no
+  covering-period arithmetic. Depth 2+ names the exact covers-since date
+  (last submission date, or the placement start date) — plainly, with no
+  meta-talk about backfilling or how the forms work.
+- Light never means optional: no "whenever you have a spare moment" energy.
+- Supervisor reports are theirs, about the fellow: "your progress report on
+  X's placement". Single-fellow supervisor emails are normal prose; the
+  line-per-fellow format only for multi-fellow batches. Never name the host
+  org back at someone who works there.
+- **Grace rule (rules change): a report submitted up to 10 days BEFORE a
+  request date counts as covering that request** — someone who submits late
+  is not chased days later for a report covering a sliver of placement
+  (the Marietta case). 10 mirrors the base's own Expected Reports grace.
 
 ## 3 + 5. Nudge memory: a Nudges table in the Placements-MEL base — DECIDED 25 Aug 2026
 

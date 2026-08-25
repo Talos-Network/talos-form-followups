@@ -27,7 +27,7 @@ from __future__ import annotations
 
 import calendar
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, timedelta
 
 # --- Config: the ladder. Change values here, not logic below. ---------------
 NUDGE_DAY_THRESHOLDS = (7, 14, 21)  # days after request date when rungs 1-3 unlock
@@ -35,6 +35,11 @@ MAX_NUDGES_PER_MONTH = 3
 CC_SUPERVISOR_DEPTH = 3      # fellow this many forms behind -> supervisor CC'd
 HEAVY_TONE_DEPTH = 2         # depth at which the register acknowledges a pattern
 MIN_DAYS_BETWEEN_NUDGES = 6  # per person+placement, so late approvals don't stack
+# A report submitted up to this many days BEFORE a request date counts as
+# covering that request too (someone who submitted late shouldn't be chased
+# for a fresh report covering two days of placement). Mirrors the 10-day
+# grace already built into the base's Expected Reports formula.
+GRACE_DAYS_BEFORE_REQUEST = 10
 
 FELLOW = "fellow"
 SUPERVISOR = "supervisor"
@@ -64,6 +69,7 @@ class DueNudge:
     request_date: date
     days_since_request: int
     form_link: str
+    placement_start: date | None = None
     last_submission: date | None = None  # their most recent form, if any
     cc_supervisor: bool = False
     supervisor_email: str = ""
@@ -103,17 +109,23 @@ def latest_request_date(start: date, today: date) -> date | None:
 
 
 def current_form_done(submissions: list[date], request: date) -> bool:
-    return any(s >= request for s in submissions)
+    """A submission on/after the request — or within the grace window just
+    before it — covers this request."""
+    cutoff = request - timedelta(days=GRACE_DAYS_BEFORE_REQUEST)
+    return any(s >= cutoff for s in submissions)
 
 
 def missed_cycles(start: date, today: date, last_submission: date | None) -> int:
-    """Depth = request dates with no report since. One report covers the whole
-    period since the previous one (programme policy: nobody is ever asked to
-    backfill), so a covering submission wipes the slate — unlike the base's
-    Expected - Actual, which counts a gap forever."""
+    """Depth = request dates not covered by any report since. One report
+    covers the whole period since the previous one (programme policy: nobody
+    is ever asked to backfill), so a covering submission wipes the slate —
+    unlike the base's Expected - Actual, which counts a gap forever. The
+    pre-request grace window applies here too."""
     k, missed = 1, 0
     while add_months(start, k) <= today:
-        if last_submission is None or add_months(start, k) > last_submission:
+        request = add_months(start, k)
+        if (last_submission is None
+                or last_submission < request - timedelta(days=GRACE_DAYS_BEFORE_REQUEST)):
             missed += 1
         k += 1
     return missed
@@ -283,7 +295,7 @@ def who_needs_nudging(placements: list[dict], history: list[PriorNudge],
                 first_name=first, email=email, org=f.get("Placement Org", ""),
                 rung=rung, depth=depth, request_date=request,
                 days_since_request=days, form_link=link,
-                last_submission=last_sub,
+                placement_start=start, last_submission=last_sub,
                 cc_supervisor=cc, supervisor_email=supervisor_email,
                 supervisor_first_name=supervisor_first,
                 reason=(f"{recipient} form for request of {request.isoformat()} not submitted; "

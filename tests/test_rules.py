@@ -146,6 +146,20 @@ class TestPredicateAndDepth(unittest.TestCase):
         self.assertEqual(fellow[0].depth, 1)
         self.assertEqual(fellow[0].last_submission, date(2026, 7, 15))
 
+    def test_late_submission_just_before_request_covers_it(self):
+        # the Marietta case: submitted 2 days before the next request went
+        # out — that request is treated as already covered, no chase
+        p = placement(start="2026-06-01", fellow_dates=["2026-07-30"])  # request 1 Aug
+        r = who_needs_nudging([p], [], TODAY)
+        self.assertEqual(due_for(r, FELLOW), [])
+
+    def test_submission_outside_grace_window_does_not_cover(self):
+        # 12 days before the request: outside the 10-day grace, still chased
+        p = placement(start="2026-06-01", fellow_dates=["2026-07-20"])  # request 1 Aug
+        r = who_needs_nudging([p], [], TODAY)
+        self.assertEqual(len(due_for(r, FELLOW)), 1)
+        self.assertEqual(due_for(r, FELLOW)[0].depth, 1)
+
     def test_covering_form_wipes_the_slate(self):
         # never submitted until July despite starting in January; that one
         # covering form resets depth — only cycles after it count
