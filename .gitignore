@@ -1,0 +1,5 @@
+fixture.json
+.env
+drafts/
+__pycache__/
+*.pyc
