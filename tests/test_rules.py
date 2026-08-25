@@ -136,16 +136,26 @@ class TestPredicateAndDepth(unittest.TestCase):
         r = who_needs_nudging([p], [], TODAY)
         self.assertEqual(due_for(r, FELLOW), [])
 
-    def test_depth_floor_is_one_in_grace_window(self):
-        # request passed 7+ days ago but Expected hasn't incremented for it
-        p = placement(start="2026-01-10", expected=6, actual_f=6)
+    def test_depth_is_one_when_only_current_cycle_missed(self):
+        # submitted mid-July, so only the 10 Aug request is unanswered —
+        # depth 1 even inside the base's Expected-Reports grace window
+        p = placement(start="2026-01-10", fellow_dates=["2026-07-15"])
         r = who_needs_nudging([p], [], date(2026, 8, 18))  # request 10 Aug, +8 days
         fellow = due_for(r, FELLOW)
         self.assertEqual(len(fellow), 1)
         self.assertEqual(fellow[0].depth, 1)
+        self.assertEqual(fellow[0].last_submission, date(2026, 7, 15))
+
+    def test_covering_form_wipes_the_slate(self):
+        # never submitted until July despite starting in January; that one
+        # covering form resets depth — only cycles after it count
+        p = placement(start="2026-01-01", fellow_dates=["2026-07-10"])
+        r = who_needs_nudging([p], [], TODAY)
+        self.assertEqual(due_for(r, FELLOW)[0].depth, 1)  # only 1 Aug missed
 
     def test_supervisor_cc_at_depth_three(self):
-        p = placement(start="2026-01-01", expected=7, actual_f=4)
+        # last report mid-May: June, July, August requests all unanswered
+        p = placement(start="2026-01-01", fellow_dates=["2026-05-15"])
         r = who_needs_nudging([p], [], TODAY)
         nudge = due_for(r, FELLOW)[0]
         self.assertEqual(nudge.depth, 3)
@@ -153,12 +163,14 @@ class TestPredicateAndDepth(unittest.TestCase):
         self.assertEqual(nudge.supervisor_email, "sup@example.org")
 
     def test_no_cc_below_depth_three(self):
-        p = placement(start="2026-01-01", expected=7, actual_f=5)
+        p = placement(start="2026-01-01", fellow_dates=["2026-06-15"])
         r = who_needs_nudging([p], [], TODAY)
-        self.assertFalse(due_for(r, FELLOW)[0].cc_supervisor)
+        nudge = due_for(r, FELLOW)[0]
+        self.assertEqual(nudge.depth, 2)
+        self.assertFalse(nudge.cc_supervisor)
 
     def test_no_cc_without_supervisor_email(self):
-        p = placement(start="2026-01-01", expected=7, actual_f=4, supervisor_email="")
+        p = placement(start="2026-01-01", fellow_dates=["2026-05-15"], supervisor_email="")
         r = who_needs_nudging([p], [], TODAY)
         self.assertFalse(due_for(r, FELLOW)[0].cc_supervisor)
 

@@ -49,7 +49,11 @@ reports they are behind in total):
   completing the monthly reflection report is a requirement of the Fellowship
   agreement (for supervisors: of the host organisation's MOU with Talos).
 - Depth 2+: acknowledge the pattern honestly ("a few of these have slipped")
-  without scolding.
+  without scolding. CRITICAL: never ask anyone to fill in multiple forms or
+  to backfill missed months. The ask is always ONE form, covering the whole
+  time on placement since their last report (the metadata gives
+  "covers_period_since" — e.g. "covering your placement since May", or since
+  the start of the placement if they have never submitted one).
 - If the metadata says the fellow's supervisor is CC'd, the email must say so
   plainly in one sentence (e.g. "We've copied in <name> so they're aware.").
 
@@ -58,7 +62,11 @@ supervisor's outstanding reports. One line per fellow with that fellow's form
 link. If the metadata lists reports that were requested only recently
 ("also_outstanding"), mention them in one soft sentence at the end ("When you
 get a moment, X's report for this month is also ready") — the firm register
-never applies to those.
+never applies to those. The one-form rule applies per fellow: where a
+fellow's reports have a gap, ask for one report covering the period since
+the supervisor's last report on that fellow. Every supervisor email ends
+with one sentence offering an out: if they're not the right person to be
+completing these reports, they should reply and we'll update our records.
 
 Output format: first line "Subject: <subject>", then a blank line, then the
 email body. Nothing else — no preamble, no commentary, no markdown.
@@ -92,6 +100,8 @@ def draft_fellow_nudge(client: anthropic.Anthropic, nudge: DueNudge) -> tuple[st
         "depth_reports_behind": nudge.depth,
         "days_since_request": nudge.days_since_request,
         "request_month": nudge.request_date.strftime("%B %Y"),
+        "covers_period_since": (nudge.last_submission.strftime("%B %Y")
+                                if nudge.last_submission else "start of placement"),
         "form_link": nudge.form_link,
         "supervisor_cc": (
             {"cc_applied": True, "supervisor_first_name": nudge.supervisor_first_name}
@@ -110,6 +120,8 @@ def draft_supervisor_batch(client: anthropic.Anthropic, batch: SupervisorBatch) 
             "host_organisation": n.org,
             "days_since_request": n.days_since_request,
             "request_month": n.request_date.strftime("%B %Y"),
+            "covers_period_since": (n.last_submission.strftime("%B %Y")
+                                    if n.last_submission else "start of placement"),
             "form_link": n.form_link,
         } for n in batch.items],
         "also_outstanding": [{

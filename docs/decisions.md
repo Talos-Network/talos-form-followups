@@ -23,11 +23,18 @@ month's form is still not completed:
 
 Hard cap: 3 nudges per person per month.
 
-### Depth (total forms behind expectation)
+### Depth (how far behind)
 
-`Expected Reports` minus `Actual Reports` from the Placements formulas. Depth
-never decides WHETHER to nudge — only how the nudge reads, and whether the
-supervisor is copied:
+REVISED 25 Aug 2026: depth = the number of monthly request cycles with no
+report since the person's last submission (computed from submission dates),
+NOT the base's `Expected − Actual`. Reason: programme policy is that nobody
+is ever asked to backfill — one report covers the whole period since their
+last — so a covering submission wipes the slate. The base formulas count a
+historical gap forever, which would have wrongly kept people in the heavy
+register (and wrongly CC'd supervisors) after they'd caught up.
+
+Depth never decides WHETHER to nudge — only how the nudge reads, and whether
+the supervisor is copied:
 
 - 1 behind: light touch — a simple reminder.
 - 2+ behind: heavier register — acknowledges the pattern.
@@ -87,6 +94,14 @@ placement, and to respond to any feedback you might share."
 
 Supervisor own-form chases mirror the same registers, professional tone,
 anchored on MOU §B.3 at the firm end.
+
+**Additions from the first draft-review session (25 Aug 2026):**
+- **The ask is always ONE form**, covering the whole time on placement since
+  the last report (or since the start, if none). Never "complete your missed
+  forms"; never backfilling. The drafting prompt receives
+  `covers_period_since` for this.
+- **Every supervisor email offers an out**: if they're not the right person
+  to complete these reports, reply and we'll update our records.
 
 ## 3 + 5. Nudge memory: a Nudges table in the Placements-MEL base — DECIDED 25 Aug 2026
 

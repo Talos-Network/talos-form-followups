@@ -64,6 +64,7 @@ class DueNudge:
     request_date: date
     days_since_request: int
     form_link: str
+    last_submission: date | None = None  # their most recent form, if any
     cc_supervisor: bool = False
     supervisor_email: str = ""
     supervisor_first_name: str = ""
@@ -103,6 +104,19 @@ def latest_request_date(start: date, today: date) -> date | None:
 
 def current_form_done(submissions: list[date], request: date) -> bool:
     return any(s >= request for s in submissions)
+
+
+def missed_cycles(start: date, today: date, last_submission: date | None) -> int:
+    """Depth = request dates with no report since. One report covers the whole
+    period since the previous one (programme policy: nobody is ever asked to
+    backfill), so a covering submission wipes the slate — unlike the base's
+    Expected - Actual, which counts a gap forever."""
+    k, missed = 1, 0
+    while add_months(start, k) <= today:
+        if last_submission is None or add_months(start, k) > last_submission:
+            missed += 1
+        k += 1
+    return missed
 
 
 def _rung_unlocked(days_since_request: int) -> int:
@@ -217,22 +231,20 @@ def who_needs_nudging(placements: list[dict], history: list[PriorNudge],
             result.quiet.append(f"{name}: first form not yet due")
             continue
 
-        depth_fellow = max(1, int(f.get("Expected Reports") or 0)
-                           - int(f.get("Actual Reports (Fellows)") or 0))
-        depth_supervisor = max(1, int(f.get("Expected Reports") or 0)
-                               - int(f.get("Actual Reports (Supervisors)") or 0))
         supervisor_email = _first(f.get("Email (from Supervisor)"))
         supervisor_first = _first(f.get("Supervisor First Name"))
         days = (today - request).days
 
-        for recipient, submissions, depth in (
-            (FELLOW, rec.get("fellow_form_dates", []), depth_fellow),
-            (SUPERVISOR, rec.get("supervisor_form_dates", []), depth_supervisor),
+        for recipient, submissions in (
+            (FELLOW, rec.get("fellow_form_dates", [])),
+            (SUPERVISOR, rec.get("supervisor_form_dates", [])),
         ):
             dates = [date.fromisoformat(s) for s in submissions]
             if current_form_done(dates, request):
                 result.quiet.append(f"{name} ({recipient}): current month submitted")
                 continue
+            last_sub = max(dates) if dates else None
+            depth = max(1, missed_cycles(start, today, last_sub))
             person_history = by_key.get((rec["id"], recipient), [])
             rung = _next_rung(person_history, request, today)
             if rung is None:
@@ -271,6 +283,7 @@ def who_needs_nudging(placements: list[dict], history: list[PriorNudge],
                 first_name=first, email=email, org=f.get("Placement Org", ""),
                 rung=rung, depth=depth, request_date=request,
                 days_since_request=days, form_link=link,
+                last_submission=last_sub,
                 cc_supervisor=cc, supervisor_email=supervisor_email,
                 supervisor_first_name=supervisor_first,
                 reason=(f"{recipient} form for request of {request.isoformat()} not submitted; "
