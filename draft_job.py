@@ -30,7 +30,30 @@ REPLY_HINT = ("_React ✅ to approve. Anything else — changes, questions, "
               "*skip* — reply in this thread._")
 
 
+def dry_run() -> None:
+    """Fixture-driven rehearsal of the rules only: no Airtable, no Slack, no
+    Claude, no network at all. Sending is impossible by construction."""
+    import json
+    from pathlib import Path
+    fixture = json.loads((Path(__file__).parent / "fixture.json").read_text())
+    result = who_needs_nudging(fixture["placements"], [], date.today())
+    fellows, batches = consolidate_supervisor_nudges(result.due, result.supervisor_context)
+    print(f"DRY RUN (fixture, empty ledger, {date.today()}) — nothing contacted:")
+    for n in fellows:
+        cc = f" +CC {n.supervisor_email}" if n.cc_supervisor else ""
+        print(f"  would draft: fellow {n.first_name} rung {n.rung} depth {n.depth}{cc}")
+    for b in batches:
+        print(f"  would draft: supervisor {b.first_name} <{b.email}>, "
+              f"{len(b.items)} due, {len(b.also_outstanding)} also-outstanding")
+    print(f"  silenced: {result.silenced or 'none'}")
+    for u in result.unprocessable:
+        print(f"  unprocessable: {u}")
+
+
 def main() -> None:
+    if "--dry-run" in sys.argv:
+        dry_run()
+        return
     if APPROVER_SLACK_ID == "FILL_ME_IN":
         sys.exit("Set APPROVER_SLACK_ID in config.py first.")
     today = date.today()

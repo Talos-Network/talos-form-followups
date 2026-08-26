@@ -1,0 +1,35 @@
+# The draft job: reads form status, drafts nudges, writes Pending rows to the
+# Nudges ledger, posts each draft to the approver's Slack DM. Never sends email.
+name: draft
+
+on:
+  schedule:
+    # 06:00 UTC daily = 08:00 Berlin in summer, 07:00 in winter (accepted
+    # drift, docs/decisions.md #4). GitHub cron is always UTC.
+    - cron: "0 6 * * *"
+  # The "Run workflow" button in the Actions tab, for running it on demand.
+  workflow_dispatch:
+
+jobs:
+  draft:
+    # A fresh throwaway Linux machine each run; nothing persists between runs.
+    runs-on: ubuntu-latest
+    # Hard stop so a hung API call can't burn Actions minutes forever.
+    timeout-minutes: 15
+    steps:
+      # Fetch the repo's code onto the runner.
+      - uses: actions/checkout@v4
+      # Install Python 3.12.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      # The one dependency (the Anthropic SDK).
+      - run: pip install -r requirements.txt
+      # Run the job. Secrets come from the repo's encrypted Actions secrets
+      # (Settings -> Secrets and variables -> Actions) and exist only as
+      # environment variables inside this run; GitHub masks them in logs.
+      - run: python3 draft_job.py
+        env:
+          AIRTABLE_TOKEN: ${{ secrets.AIRTABLE_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
