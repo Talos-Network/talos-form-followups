@@ -11,6 +11,6 @@ STALE_PENDING_DAYS = 3
 #   "stub"     - no email exists; the poller prints/reports what it would send
 #   "self"     - real emails, but every recipient is replaced by APPROVER_EMAIL
 #   "live"     - real emails to real people
-SEND_MODE = "stub"
+SEND_MODE = "self"
 APPROVER_EMAIL = "stephen@talosnetwork.org"
 OPS_FROM = "ops@talosnetwork.org"
