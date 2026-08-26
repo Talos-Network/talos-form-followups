@@ -1,95 +1,133 @@
-"""The poller (build step 7: INTERPRETATION-ONLY). Reads each Pending draft's
-Slack thread, works out what the approver wants, and posts what it WOULD do
-back into the thread. Nothing is sent, no ledger state changes — that arrives
-in step 8, wired behind these exact same readings.
+"""The poller (every 15 min): reads each Pending draft's Slack thread, works
+out what the approver wants, and ACTS:
 
-Approval channels (docs/decisions.md):
-- A ✅ (white_check_mark) reaction on the draft message, from the allowlisted
-  approver = approve.
-- Anything else happens in thread replies, classified conservatively by
-  interpretation.classify_reply.
-- Thread replies OUTRANK the reaction: if there are new replies, they are
-  what gets read; a ✅ alongside a written "skip" never wins.
-- Replies and reactions from anyone not on the allowlist are ignored.
+  approve -> send the email (per config.SEND_MODE's safety ladder), stamp the
+             ledger row(s) Sent, confirm in-thread
+  edit    -> revise the draft, update the ledger, post the revision for a
+             FRESH approval (never sent on the old approval's strength)
+  skip    -> stamp Rejected (silences that person for the month), confirm
+  unclear -> ask one polite question; never act
 
-Idempotency: the poller only reads human replies newer than its own last
-message in each thread, and only announces a reaction once — so a 15-minute
-cron re-reads quietly and stays silent unless something new happened.
+Approval channels (docs/decisions.md #6b): a ✅ reaction from the allowlisted
+approver on the draft message, or on the latest posted revision — or a clear
+written approval in the thread. Thread replies outrank reactions; once a
+conversation has started, only the latest revision's ✅ counts.
+
+Double-send protection, layered: only Pending rows are polled at all (a Sent
+stamp removes the thread from the next poll); rows are stamped immediately
+after the send call returns; and the poller only reads human replies newer
+than its own last message in each thread, so one reply is acted on once.
 """
 
 from __future__ import annotations
 
+from datetime import date
+
 import anthropic
 
-from airtable_client import fetch_pending_nudges
-from config import APPROVER_SLACK_ID
+from airtable_client import (fetch_pending_nudges, stamp_rejected, stamp_sent,
+                             update_draft)
+from config import APPROVER_SLACK_ID, SEND_MODE
+from drafting import revise_draft, split_draft
 from interpretation import classify_reply
+from sender import send_email
 from slack_client import (parse_permalink, post_message, reaction_users,
                           thread_replies)
 
 APPROVE_EMOJI = "white_check_mark"
-APPROVED_MARKER = "Read as *approve*"
-
-INTERPRETATION_ONLY_NOTE = "(Interpretation-only mode: nothing sent, nothing changed.)"
+REVISION_MARKER = "Here's the revised draft"
 
 
-def _respond(interp) -> str:
-    if interp.intent == "approve":
-        return (f"✅ {APPROVED_MARKER} — in live mode I'd send this email now "
-                f"and mark it Sent. {INTERPRETATION_ONLY_NOTE}")
-    if interp.intent == "edit":
-        return (f"✏️ Read as an *edit request*: _{interp.edit_instructions}_\n"
-                f"In live mode I'd revise the draft and post it back here for a "
-                f"fresh approval. {INTERPRETATION_ONLY_NOTE}")
-    if interp.intent == "reject":
-        return (f"🚫 Read as *skip* — in live mode I'd mark this nudge Rejected "
-                f"for the month. {INTERPRETATION_ONLY_NOTE}")
-    return f"❓ {interp.clarifying_question}\n_(I won't act until it's clear.)_"
+def _approve(rows: list[dict], channel: str, ts: str) -> None:
+    """Send once per thread (batch rows share one email), stamp every row."""
+    fields = rows[0]["fields"]
+    to = fields.get("To")
+    if not to:
+        post_message(channel, ("⚠️ I can't send this one: the ledger row has no "
+                               "recipient (it predates the To field). Reply *skip* "
+                               "and it will be re-drafted on a future run."), thread_ts=ts)
+        return
+    subject, body = split_draft(fields.get("Draft", ""))
+    outcome = send_email(to, subject, body, cc=fields.get("CC", ""))
+    for row in rows:
+        stamp_sent(row["id"], APPROVER_SLACK_ID, date.today())
+    note = " (ledger marked Sent)" if SEND_MODE != "stub" else \
+        " (ledger marked Sent — stub mode, no real email existed)"
+    post_message(channel, f"✅ Approved — {outcome}.{note}", thread_ts=ts)
+    print(f"{fields.get('Nudge')}: approved -> {outcome}")
+
+
+def _edit(rows: list[dict], instructions: str, client, channel: str, ts: str) -> None:
+    current = rows[0]["fields"].get("Draft", "")
+    try:
+        subject, body = revise_draft(client, current, instructions)
+    except Exception as e:
+        post_message(channel, f"⚠️ I couldn't produce a revision: {e}", thread_ts=ts)
+        return
+    revised = f"Subject: {subject}\n\n{body}"
+    for row in rows:
+        update_draft(row["id"], revised, previous=current)
+    post_message(channel, (
+        f"{REVISION_MARKER}:\n\n*Subject:* {subject}\n\n{body}\n\n"
+        f"_React ✅ on this message (or reply *approve*) to send it — the "
+        f"revision needs its own approval._"), thread_ts=ts)
+    print(f"{rows[0]['fields'].get('Nudge')}: revised per edit request")
+
+
+def _reject(rows: list[dict], channel: str, ts: str) -> None:
+    for row in rows:
+        stamp_rejected(row["id"], APPROVER_SLACK_ID)
+    post_message(channel, ("🚫 Skipped — marked Rejected in the ledger. They "
+                           "won't be chased again this month."), thread_ts=ts)
+    print(f"{rows[0]['fields'].get('Nudge')}: skipped")
 
 
 def main() -> None:
     pending = fetch_pending_nudges()
-    # Batch rows share one thread — process each thread once.
-    threads: dict[str, dict] = {}
+    threads: dict[str, list[dict]] = {}
     for row in pending:
         link = row["fields"].get("Slack thread")
         if link:
-            threads.setdefault(link, row)
+            threads.setdefault(link, []).append(row)
 
     client = anthropic.Anthropic()
-    acted, checked = 0, 0
-    for link, row in threads.items():
-        checked += 1
+    acted = 0
+    for link, rows in threads.items():
         channel, ts = parse_permalink(link)
         msgs = thread_replies(channel, ts)
-
         last_bot_index = max(i for i, m in enumerate(msgs) if m.get("bot_id"))
         new_replies = [m for m in msgs[last_bot_index + 1:]
                        if m.get("user") == APPROVER_SLACK_ID and not m.get("bot_id")]
 
         if new_replies:
             reply_text = "\n".join(m.get("text", "") for m in new_replies)
-            interp = classify_reply(client, row["fields"].get("Draft", ""), reply_text)
-            post_message(channel, _respond(interp), thread_ts=ts)
-            print(f"{row['fields'].get('Nudge', link)}: reply read as {interp.intent}")
+            interp = classify_reply(client, rows[0]["fields"].get("Draft", ""), reply_text)
+            if interp.intent == "approve":
+                _approve(rows, channel, ts)
+            elif interp.intent == "edit":
+                _edit(rows, interp.edit_instructions, client, channel, ts)
+            elif interp.intent == "reject":
+                _reject(rows, channel, ts)
+            else:
+                post_message(channel, f"❓ {interp.clarifying_question}\n"
+                                      f"_(I won't act until it's clear.)_", thread_ts=ts)
+                print(f"{rows[0]['fields'].get('Nudge')}: unclear, asked")
             acted += 1
             continue
 
-        # No new words — check for a fresh ✅ from the approver on the draft
-        # itself. An edit conversation in the thread voids the reaction path:
-        # a revision needs its own approval, never the original message's ✅.
+        # No new words — check reactions. The ✅ target is the original draft
+        # message while the thread is untouched, or the LATEST revision once
+        # a conversation exists. Reactions on anything else don't count.
+        revision_ts = next((m["ts"] for m in reversed(msgs)
+                            if m.get("bot_id") and REVISION_MARKER in m.get("text", "")), None)
         conversation_started = len(msgs) > 1
-        already_announced = any(APPROVED_MARKER in m.get("text", "")
-                                for m in msgs if m.get("bot_id"))
-        if (not conversation_started and not already_announced
-                and APPROVER_SLACK_ID in reaction_users(channel, ts, APPROVE_EMOJI)):
-            post_message(channel, (
-                f"✅ {APPROVED_MARKER} (via reaction) — in live mode I'd send this "
-                f"email now and mark it Sent. {INTERPRETATION_ONLY_NOTE}"), thread_ts=ts)
-            print(f"{row['fields'].get('Nudge', link)}: ✅ reaction read as approve")
+        target_ts = revision_ts if revision_ts else (None if conversation_started else ts)
+        if target_ts and APPROVER_SLACK_ID in reaction_users(channel, target_ts, APPROVE_EMOJI):
+            _approve(rows, channel, ts)
             acted += 1
 
-    print(f"Checked {checked} pending thread(s); responded to {acted}.")
+    print(f"Checked {len(threads)} pending thread(s); acted on {acted}. "
+          f"SEND_MODE={SEND_MODE}")
 
 
 if __name__ == "__main__":

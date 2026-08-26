@@ -83,6 +83,29 @@ email body. Nothing else — no preamble, no commentary, no markdown.
 """
 
 
+SUPERSEDED_DIVIDER = "\n\n--- superseded draft ---\n"
+
+
+def split_draft(draft_field: str) -> tuple[str, str]:
+    """(subject, body) of the CURRENT draft from a ledger Draft field —
+    revisions are stacked newest-first above a superseded divider."""
+    current = draft_field.split(SUPERSEDED_DIVIDER, 1)[0].strip()
+    first, _, body = current.partition("\n")
+    return first.removeprefix("Subject:").strip(), body.strip()
+
+
+def revise_draft(client: anthropic.Anthropic, current_draft: str,
+                 instructions: str) -> tuple[str, str]:
+    """Revise per the approver's instructions; all voice rules still apply."""
+    return _call(client, {
+        "email_type": "revision",
+        "current_draft": current_draft,
+        "approver_instructions": instructions,
+        "note": ("Revise the draft according to the approver's instructions. "
+                 "Keep everything else, including all voice rules, intact."),
+    })
+
+
 def _covers_since(nudge) -> str:
     d = nudge.last_submission or nudge.placement_start
     return f"{d.day} {d:%B %Y}" if d else "start of placement"

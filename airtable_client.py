@@ -128,7 +128,7 @@ def fetch_nudge_history() -> list[PriorNudge]:
 
 def fetch_pending_nudges() -> list[dict]:
     """Full Pending rows, for the poller (draft text + Slack thread included)."""
-    rows = _read_all(NUDGES, NUDGE_FIELDS + ["Nudge", "Draft", "Slack thread"])
+    rows = _read_all(NUDGES, NUDGE_FIELDS + ["Nudge", "Draft", "Slack thread", "To", "CC"])
     return [r for r in rows if r["fields"].get("Status") == "Pending"]
 
 
@@ -144,6 +144,8 @@ def create_pending_nudge(due: DueNudge, draft: str, today: date) -> str:
         "Supervisor CC'd": due.cc_supervisor,
         "Status": "Pending",
         "Draft": draft,
+        "To": due.email,
+        **({"CC": due.supervisor_email} if due.cc_supervisor else {}),
         "Created at": today.isoformat(),
     }})
     return rec["id"]

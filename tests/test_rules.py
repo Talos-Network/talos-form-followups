@@ -250,6 +250,22 @@ class TestConsolidation(unittest.TestCase):
         self.assertEqual(batches2, [])
 
 
+class TestDraftSplitting(unittest.TestCase):
+    def test_split_plain_draft(self):
+        from drafting import split_draft
+        subject, body = split_draft("Subject: Your August report\n\nHi Sam,\n\nText here.")
+        self.assertEqual(subject, "Your August report")
+        self.assertEqual(body, "Hi Sam,\n\nText here.")
+
+    def test_split_uses_latest_revision_only(self):
+        from drafting import SUPERSEDED_DIVIDER, split_draft
+        stacked = ("Subject: Warmer version\n\nNew body."
+                   + SUPERSEDED_DIVIDER + "Subject: Old\n\nOld body.")
+        subject, body = split_draft(stacked)
+        self.assertEqual(subject, "Warmer version")
+        self.assertEqual(body, "New body.")
+
+
 class TestPermalinkParsing(unittest.TestCase):
     def test_parse_permalink(self):
         from slack_client import parse_permalink
