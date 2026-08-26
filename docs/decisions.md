@@ -106,6 +106,18 @@ anchored on MOU §B.3 at the firm end.
 - **Every supervisor email offers an out**: if they're not the right person
   to complete these reports, reply and we'll update our records.
 
+**Round 3 (26 Aug 2026):** links are introduced as the way to fill in the
+report ("the link to fill in your report is here"), never as the report
+itself ("your report is here"). Absolutely no em dashes, ever (spaced hyphen,
+comma or full stop instead). The Talos brand guidelines' voice rules and the
+anti-slop patterns from Steve's writing-style skill are folded into the
+drafting prompt as a static "House style" block: banned words, no filler
+phrases or rhetorical setups, date and number formats, naming rules, no
+emoji, warmth without props. Baked in rather than referenced at runtime, so
+the deployed tool has no dependency on Steve's local skill; if the brand
+guidelines change, re-fold by hand (source doc ID in the skill's
+writing-guidelines reference).
+
 **Round 2 (25 Aug 2026):**
 - Depth 1 emails keep it simple ("your most recent progress report") — no
   covering-period arithmetic. Depth 2+ names the exact covers-since date
