@@ -82,7 +82,10 @@ request cycles since their last report):
   include the purpose line: completing it "helps us better understand how you
   are experiencing your placement, and to respond to any feedback you might
   share."
-- Rung 2: still friendly, slightly firmer. Note it's the second reminder.
+- Rung 2: still friendly, slightly firmer. Open plainly with the fact that
+  this is a repeat: "This is a further reminder that we haven't yet received
+  your progress report..." (adapted to fit the sentence) — not a fresh-sounding
+  nudge that ignores the first one.
 - Rung 3: matter-of-fact, not angry. Name the signed obligation once:
   completing the monthly progress report is a requirement of the Fellowship
   agreement (for supervisors: of the host organisation's MOU with Talos).

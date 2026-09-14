@@ -132,6 +132,16 @@ def fetch_pending_nudges() -> list[dict]:
     return [r for r in rows if r["fields"].get("Status") == "Pending"]
 
 
+def fetch_recently_sent_nudges(days: int = 14) -> list[dict]:
+    """Rows Sent within the last N days — the poller watches their threads so
+    a late reply gets an acknowledgment instead of silence."""
+    from datetime import date, timedelta
+    cutoff = (date.today() - timedelta(days=days)).isoformat()
+    rows = _read_all(NUDGES, NUDGE_FIELDS + ["Nudge", "Slack thread"])
+    return [r for r in rows if r["fields"].get("Status") == "Sent"
+            and (r["fields"].get("Sent at") or "") >= cutoff]
+
+
 # --- Writes (Nudges only) ----------------------------------------------------
 
 def create_pending_nudge(due: DueNudge, draft: str, today: date) -> str:

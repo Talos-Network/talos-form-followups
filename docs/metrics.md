@@ -27,3 +27,4 @@ the date and any discounts alongside each measurement here.
 | Date | Current combined | All-time combined | Notes |
 |---|---|---|---|
 | 2026-08-26 | 76% | 62% | Baseline, pre-nudge (Alina supervisor report discounted) |
+| 2026-09-14 | 79% | 63% | First fortnight live (paused 27 Aug–7 Sept). 23 nudges sent, 12 followed by a submission (52%), 9 of those within 0–2 days. Expected grew 47→54 over the period, so +3pp is against a rising bar. |

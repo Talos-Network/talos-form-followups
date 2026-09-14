@@ -25,8 +25,8 @@ from datetime import date
 
 import anthropic
 
-from airtable_client import (fetch_pending_nudges, stamp_rejected, stamp_sent,
-                             update_draft)
+from airtable_client import (fetch_pending_nudges, fetch_recently_sent_nudges,
+                             stamp_rejected, stamp_sent, update_draft)
 from config import APPROVER_SLACK_ID, SEND_MODE
 from drafting import revise_draft, split_draft
 from interpretation import classify_reply
@@ -126,8 +126,35 @@ def main() -> None:
             _approve(rows, channel, ts)
             acted += 1
 
-    print(f"Checked {len(threads)} pending thread(s); acted on {acted}. "
-          f"SEND_MODE={SEND_MODE}")
+    # Closed threads aren't acted on, but they shouldn't be silent either: a
+    # reply on a recently-Sent nudge gets one acknowledgment saying where
+    # that kind of message actually goes. Same idempotency as everywhere
+    # else — only replies newer than the bot's own last message are seen.
+    closed_acks = 0
+    seen = set(threads)
+    for row in fetch_recently_sent_nudges():
+        link = row["fields"].get("Slack thread")
+        if not link or link in seen:
+            continue
+        seen.add(link)
+        channel, ts = parse_permalink(link)
+        msgs = thread_replies(channel, ts)
+        last_bot_index = max(i for i, m in enumerate(msgs) if m.get("bot_id"))
+        new_replies = [m for m in msgs[last_bot_index + 1:]
+                       if m.get("user") == APPROVER_SLACK_ID and not m.get("bot_id")]
+        if new_replies:
+            post_message(channel, (
+                "This email already went out, so I don't act on replies in this "
+                "thread. If that was tone or wording feedback, take it to Claude — "
+                "the drafting prompt lives in the talos-form-followups repo and "
+                "your note is exactly what improves it. If this person needs a "
+                "correction or follow-up email, that's a manual send from ops@."),
+                thread_ts=ts)
+            print(f"{row['fields'].get('Nudge')}: acknowledged reply on closed thread")
+            closed_acks += 1
+
+    print(f"Checked {len(threads)} pending thread(s); acted on {acted}; "
+          f"acknowledged {closed_acks} closed-thread repl(ies). SEND_MODE={SEND_MODE}")
 
 
 if __name__ == "__main__":
